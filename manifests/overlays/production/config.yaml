@@ -1,0 +1,82 @@
+# zensur example config. Copy to config.yaml (or set ZENSUR_CONFIG=/path/to.yaml)
+# and customize. Patterns shown here are placeholders.
+
+# Global default normalization options. Each rule inherits these and can
+# override any field individually. Built-in fallbacks (when both global and
+# rule leave a field unset) are: case_insensitive=true, normalize_unicode=true,
+# strip_marks=true, leet=false, collapse_repeats=false, fold_kana=false.
+defaults:
+  case_insensitive: true
+  normalize_unicode: true   # NFKC (ｂａｄｗｏｒｄ → badword)
+  strip_marks: true         # defeats zalgo and combining-mark evasion
+  leet: false               # 0→o, 1→i, 3→e, 4→a, 5→s, 7→t, @→a, $→s, !→i
+  collapse_repeats: false   # "fuuuck" → "fuck" (only collapses runs of 3+)
+  fold_kana: true          # hiragana ↔ katakana
+
+# Used by the "warn" action and as the fallback when a rule's own notice is
+# empty. Set notice_auto_delete_seconds to 0 to leave the notice in place.
+notice: "Your message was removed."
+notice_auto_delete_seconds: 8
+
+# Used by the "replace" action when a rule's own replacement is empty.
+replacement: "***"
+
+# Rules are evaluated in order. Each rule has:
+#   id          — unique identifier (used in logs and to look up notices)
+#   patterns    — list of patterns; semantics depend on `mode`
+#   mode        — substring | word | regex
+#                   substring: matches anywhere (best for CJK / no whitespace)
+#                   word:      matches only at letter/digit boundaries
+#                              (best for English-like languages)
+#                   regex:     RE2; matched against the normalized text
+#   action      — log | delete | warn | replace
+#                   replace requires the bot to have Manage Webhooks
+#                   permission in the channel; falls back to a notice on error
+#   notice      — per-rule override of the global notice (warn / replace
+#                 fallback)
+#   replacement — per-rule override of the global replacement (replace action)
+#   allow       — phrases that suppress this rule when present in the
+#                 normalized message (Scunthorpe-problem workaround)
+# Plus any normalize option from `defaults` to override per-rule.
+rules:
+  # "ワホー" — exhaustive coverage.
+  #
+  # Pipeline at match time (rule overrides + global defaults):
+  #   1. NFKC                — ｗａｈｏ→waho, ﾜﾎｰ→ワホー, ！→!, ～→~
+  #   2. strip combining marks — defeats zalgo
+  #   3. case fold           — WAHO→waho
+  #   4. collapse runs of 3+ — ワホーーー→ワホー, wahoooo→waho
+  #   5. fold hiragana→katakana — わほ→ワホ
+  #
+  # After that, every kana variant of "wa-ho-<long>" reduces to ワホ followed
+  # by one prolongation char; every romaji variant reduces to "wah" + at
+  # least one long-o representative.
+  #
+  # Known evasions NOT caught: homoglyph swaps (Cyrillic а/Greek ο), inserted
+  # whitespace/punctuation between letters. Add separate rules if needed.
+
+  - id: waho-kana
+    # [ワヮ]ホ followed by one or more of:
+    #   ー  U+30FC katakana-hiragana prolonged sound mark
+    #   ｰ   U+FF70 halfwidth (also NFKC→ー, kept for safety)
+    #   オウ explicit spell-out of long /oː/
+    #   -   ASCII hyphen-minus (also catches NFKC of fullwidth －)
+    #   ~   ASCII tilde         (also catches NFKC of fullwidth ～)
+    #   〜  U+301C wave dash
+    #   ‐‑‒–—― various Unicode dashes (U+2010..U+2015)
+    patterns:
+      - '[ワヮ]ホ[ーｰオウ\-~〜‐‑‒–—―]+'
+    mode: regex
+    action: delete
+    collapse_repeats: true   # ワホーーー → ワホー, ワホオオ → ワホオ
+    # fold_kana is on globally (defaults), so わほー / ヮほー all fold here.
+
+  - id: waho-romaji
+    # wah followed by one or more long-o representatives, optional trailing h.
+    # Macron (ō) and circumflex (ô) variants are composed runes after NFKC, so
+    # they must appear literally in the class.
+    patterns:
+      - 'wah[oōôòóöuū]+h?'
+    mode: regex
+    action: delete
+    collapse_repeats: true   # wahooooo → waho

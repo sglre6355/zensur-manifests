@@ -20,3 +20,12 @@ spec:
           envFrom:
             - secretRef:
                 name: zensur
+          volumeMounts:
+            - name: config
+              mountPath: /config.yaml
+              subPath: config.yaml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: zensur-config

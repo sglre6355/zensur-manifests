@@ -3,3 +3,7 @@ resources:
 images:
   - name: ghcr.io/sglre6355/zensur
     newTag: latest
+configMapGenerator:
+  - name: zensur-config
+    files:
+      - config.yaml
