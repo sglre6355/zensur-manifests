@@ -1,0 +1,5 @@
+resources:
+  - ../../base
+images:
+  - name: ghcr.io/sglre6355/zensur
+    newTag: latest

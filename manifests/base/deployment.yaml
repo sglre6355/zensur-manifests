@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zensur
+spec:
+  selector:
+    matchLabels:
+      app: zensur
+  template:
+    metadata:
+      labels:
+        app: zensur
+    spec:
+      containers:
+        - name: zensur
+          image: ghcr.io/sglre6355/zensur
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+          envFrom:
+            - secretRef:
+                name: zensur
