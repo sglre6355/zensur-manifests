@@ -80,3 +80,38 @@ rules:
     mode: regex
     action: delete
     collapse_repeats: true   # wahooooo → waho
+
+# LLM-based semantic filter. The pattern rules above catch literal spellings of
+# "ワホー"; this catches what they can't — evasions that share the *meaning* or
+# *reading* of the banned word rather than its characters, above all homophone
+# kanji (話法, 和法, …) read "wahō". Requires the OPENAI_API_KEY env var.
+llm:
+  enabled: true
+  provider: openai
+  model: gpt-5.4-nano          # cheapest vision-capable OpenAI tier; here text-only
+  api_key_env: OPENAI_API_KEY
+  action: delete               # match the pattern rules; offenders are removed
+  # temperature: 0             # default — deterministic verdicts
+  directive: |
+    This server permanently bans the buzzword "ワホー" — a catchphrase
+    popularized by the Japanese YouTuber SeikinTV — and anything that invokes,
+    alludes to, or is suggestive of it. Users actively try to evade the ban, so
+    judge each message by its intended meaning and reading, not by its literal
+    characters.
+
+    Flag the message if it invokes, references, puns on, spells out, or hints at
+    "ワホー", including but not limited to:
+      - any kana spelling: ワホー, わほー, ワホ, わほ, わほう, ワホウ, ﾜﾎｰ, etc.
+      - homophones that share the reading "wahō" / "waho" but are written with
+        unrelated kanji used as the catchphrase, e.g. 話法, 和法, 話方, 輪宝,
+        倭法, or any similar 漢字 combination read the same way
+      - romaji or phonetic forms: waho, wahoo, wahō, wahoh, "wa ho", etc.
+      - obfuscations: characters separated by spaces, dots, or symbols
+        (ワ・ホ・ー, w a h o), look-alike / homoglyph letters, or emoji and
+        ASCII art that spell or sound it out
+      - indirect allusions clearly intended to evoke the banned word
+
+    Do NOT flag a homophone such as 話法 when it is plainly used in its genuine
+    dictionary sense inside a normal sentence (e.g. discussing narration
+    technique or a speaking style) and is not standing in for the catchphrase.
+    When the intent is genuinely ambiguous, flag it.
