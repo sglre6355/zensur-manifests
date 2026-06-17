@@ -115,3 +115,6 @@ llm:
     dictionary sense inside a normal sentence (e.g. discussing narration
     technique or a speaking style) and is not standing in for the catchphrase.
     When the intent is genuinely ambiguous, flag it.
+
+  images:
+    enabled: true
